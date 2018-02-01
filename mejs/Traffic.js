@@ -6,6 +6,7 @@
 // Constants
 var WIDTH = 800, HEIGHT = 600;
 var DEF_CAR_SPEED = 0.01;
+var INTX_SIZE = 20;
 
 // Game elements
 var canvas, ctx, keystate;
@@ -63,7 +64,7 @@ Intersection.prototype = {
 	// draw this intersection
 	draw: function(ctx){
 		// Currently do not need ctx.save() and restore() as we do not modify ctx
-		ctx.fillRect(this._posx - 10, this._posy - 10, 20, 20);
+		ctx.fillRect(this._posx - INTX_SIZE/2, this._posy - INTX_SIZE/2, INTX_SIZE, INTX_SIZE);
 		// Draw roads
 		this._roads.forEach(function(road){
 			ctx.beginPath();
@@ -129,6 +130,10 @@ Car.prototype = {
 	}
 }
 
+// Game states
+var RUN = 0, ADD_INTERSECTION = 1;
+var mode;
+
 // Game entry point
 function main(){
 	init();
@@ -142,13 +147,54 @@ function init(){
 	canvas.height = HEIGHT;
 	ctx = canvas.getContext("2d");
 	document.getElementById("display").appendChild(canvas);
+	
+	canvas.addEventListener("mousedown", click);
+	
+	mode = RUN;
+	
+	// Add button listeners
+	document.getElementById("bAddIntersection").onclick = function(){mode = ADD_INTERSECTION;}
+}
+
+var newIntersection = null;
+function click(evt){
+	var mousex = evt.offsetX;
+	var mousey = evt.offsetY;
+	if(mode == ADD_INTERSECTION){
+		if(newIntersection == null){
+			// First click, add new intersection here and draw it (remember draw loop is paused)
+			newIntersection = new Intersection(newIntersectionId(), mousex, mousey);
+			newIntersection.draw(ctx);
+		}else{
+			// Not first click, detect if clicking on another intersection to link to
+			var found = false;
+			for(var i in intersections){
+				if(i != newIntersection._id){
+					var intx = intersections[i];
+					if(Math.hypot(intx._posx - mousex, intx._posy - mousey) < INTX_SIZE){
+						newIntersection.connect(i);
+						newIntersection.draw(ctx);
+						found = true;
+					}
+				}
+			}
+			// Did not click on another intersection
+			if(!found){
+				newIntersection = null;
+				mode = RUN;
+				window.requestAnimationFrame(step);
+			}
+		}
+	}
 }
 
 // Frame step
 function step(){
-	update();
-	draw();
-	window.requestAnimationFrame(step);
+	if(mode == RUN){
+		update();
+		draw();
+		window.requestAnimationFrame(step);
+	}
 }
 
 // Update all entities
