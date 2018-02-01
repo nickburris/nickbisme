@@ -1,0 +1,25 @@
+body{
+	background: black url("images/bodybg.png") repeat top center;
+}
+
+p{
+	font-family:sans-serif;
+	font-size:13px;
+}
+
+.grabbable {
+    cursor: move; /* fallback if grab cursor is unsupported */
+    cursor: grab;
+    cursor: -moz-grab;
+    cursor: -webkit-grab;
+}
+
+#graphWrapper {
+	position: relative;
+}
+
+#graphWrapper canvas {
+	position: absolute;
+	top: 0;
+	left: 0;
+}

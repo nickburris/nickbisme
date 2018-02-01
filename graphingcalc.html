@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<!-- http://nickbis.me/graphingcalc.html -->
+
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<title>Graphing Calculator</title>
+		<link href="meapps.css" rel="stylesheet"/>
+		<link rel="icon" href="images/icon.ico"/>
+		
+		<!-- Required JS -->
+		<script src="mejs/LinkedList.js"></script>
+		<script src="mejs/Postfix.js"></script>
+		<script src="mejs/Graph.js"></script>
+	</head>
+	
+	<body>
+		<p class="desc">I created this graphing calculator as a fun JavaScript project.
+		You can input an equation or multiple comma-seperated equations, and it will draw them
+		on the graph. I wrote my own equation interpreter and processor, by implementing the shunting-yard
+		algorithm to convert each equation to reverse polish notation (AKA "postfix"), from which an answer
+		can then be much more efficiently calculated. I also wrote some <a href="graphingcalctest.html">unit tests</a>
+		for the equation processor.</p>
+		<p class="desc">Cool features include trig functions, proper order of operations, seamless panning, and seamless zooming with the scroll wheel! 
+		Check to log latency stats to the console: <input type="checkbox" id="devmodeCheck"></p>
+		<!--<p class="desc">Known issues (fixed within 24 hours): </p> -->
+		<p class="formulaField">Formula: y=<input type="text" name="formula" id="formulaBox"> <button type="button" id="drawButton">Draw!</button></p>
+		<p class="coordinatesField">Coordinates: <span id="mouseCoords">-,-</span></p>
+		
+		<div id="graphWrapper"></div>
+		
+		<script>
+
+			main();
+		
+		</script>
+		
+		<script>
+		  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+		  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+		  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+		  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+		  ga('create', 'UA-26669592-1', 'auto');
+		  ga('send', 'pageview');
+
+		</script>
+		
+		<noscript>
+			<p>Javascript required!</p>
+		</noscript>
+	</body>
+</html>

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<!-- http://nickbis.me/graphingcalctest.html -->
+
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<title>Graphing Calculator Tests</title>
+		<link rel="icon" href="images/icon.ico"/>
+		
+		<style>
+		p.testPassed{
+			color: GREEN;
+		}
+		p.testFailed{
+			color: RED;
+		}
+		</style>
+		
+		<!-- Required JS -->
+		<script src="mejs/LinkedList.js"></script>
+		<script src="mejs/Postfix.js"></script>
+	</head>
+	<body>
+		<p>In progress. TODO:</p>
+		<ul>
+			<li>Add more test coverage for postfix.</li>
+			<li>Add tests for graphing script.</li>
+		</ul>
+		<p>Running tests on Postfix conversion script...</p>
+		
+		<div id="results">
+		</div>
+		
+		<script>
+			var TESTS = [
+				{equation: "x", xVals: [-30, 0, 30], answers: [-30, 0, 30]},
+				{equation: "x^2", xVals: [-30, 0, 20], answers: [900, 0, 400]},
+				{equation: "1/x", xVals: [-5, 0, 2], answers: [-0.2, Number.POSITIVE_INFINITY, 0.5]},
+				{equation: "sinx", xVals: [-5, 0, 1], answers: [Math.sin(-5), Math.sin(0), Math.sin(1)]},
+				{equation: "sin(x^2)", xVals: [-5, 0, 1], answers: [Math.sin(25), Math.sin(0), Math.sin(1)]}
+			];
+			
+			for(var i = 0; i < TESTS.length; i++){
+				var t = TESTS[i];
+				var passed = true;
+				var failedAt = -1;
+				for(var j = 0; j < t.xVals.length; j++){
+					var result = evaluationTest(t.equation, t.xVals[j]);
+					if (result != t.answers[j]){
+						passed = false;
+						failedAt = j;
+						// TODO maybe say this specific val failed?
+						break;
+					}
+				}
+				
+				var newResult = document.createElement("p");
+				newResult.textContent = "[" + t.equation + "]: ";
+				if(passed){
+					newResult.setAttribute("class", "testPassed");
+					newResult.textContent += "Passed!";
+				}else{
+					newResult.setAttribute("class", "testFailed");
+					newResult.textContent += "Failed! x=" + t.xVals[failedAt] + ", expected answer=" + t.answers[failedAt];
+				}
+				document.getElementById("results").appendChild(newResult);
+			}
+		</script>
+		
+		<script>
+		  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+		  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+		  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+		  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+		  ga('create', 'UA-26669592-1', 'auto');
+		  ga('send', 'pageview');
+
+		</script>
+	</body>
+</html>
