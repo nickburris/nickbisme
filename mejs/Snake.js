@@ -217,10 +217,6 @@ function draw() {
 				ctx.fillStyle = "rgb(255, 100, 255)"; //pink
 			}
 			
-			/*
-			 * roundRect() is pretty but laggy
-			 */
-			//roundRect(ctx, i*BLOCKSIZE, j*BLOCKSIZE, BLOCKSIZE, BLOCKSIZE, 4, true, true);
 			ctx.fillRect(x*BLOCKSIZE, y*BLOCKSIZE, BLOCKSIZE, BLOCKSIZE);
 		}
 		
