@@ -1,3 +1,8 @@
+/**
+ * A simple snake game.
+ *
+ */
+
 //Constants
 var WIDTH = 810, HEIGHT = 600;
 var BLOCKSIZE = 15;

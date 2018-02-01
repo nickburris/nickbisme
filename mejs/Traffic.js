@@ -1,3 +1,8 @@
+/**
+ * A traffic simulator.
+ *
+ */
+
 // Constants
 var WIDTH = 800, HEIGHT = 600;
 

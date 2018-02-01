@@ -1,4 +1,8 @@
-/* TODO general features
+/**
+ * Visual code for the graphing calculator, for drawing the functions efficiently and
+ * manipulating the viewport.
+ *
+ * TODO general features
  * Don't need to recalculate all Y values on a pan action
  * crosshairs at cursor
  *

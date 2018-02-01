@@ -1,5 +1,5 @@
-/*
- * Graph drawing for drawing state transition diagrams
+/**
+ * Graph drawing for drawing state transition diagrams in finite automata
  *
  */
  

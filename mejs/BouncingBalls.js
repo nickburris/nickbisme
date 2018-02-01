@@ -1,3 +1,8 @@
+/**
+ * A fun physics experiment where you can throw balls around the screen.
+ *
+ */
+
 //var WIDTH = document.body.clientWidth, HEIGHT = document.body.clientHeight;
 var WIDTH = window.innerWidth, HEIGHT = window.innerHeight;
 

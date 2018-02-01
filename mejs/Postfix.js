@@ -1,4 +1,9 @@
-/* TODO general features
+/**
+ * Function processor for the graphing calculator, for efficient evaluation of functions.
+ * This takes the functions from the input field and converts them to postfix notation
+ * which is much faster to process.
+ *
+ * TODO general features
  * Turn yvals into an array
  * 	Much better for drawing sticky crosshair
  *

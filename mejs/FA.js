@@ -1,3 +1,8 @@
+/**
+ * Object prototype definitions for the finite automata builder.
+ *
+ */
+
 // Finite Automaton object
 function FiniteAutomaton() {
 	this._nElements = 1;
