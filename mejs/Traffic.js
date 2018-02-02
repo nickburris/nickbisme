@@ -40,6 +40,10 @@ Intersection.prototype = {
 		if(id instanceof Intersection){
 			id = id._id;
 		}
+		
+		// Sometimes a string gets passed
+		id = Number(id);
+		
 		// Check for a logical error
 		if(this._id == id){
 			console.log("[WARNING] Connecting intersection ", id, " to self.");
@@ -63,7 +67,7 @@ Intersection.prototype = {
 	
 	// draw this intersection
 	draw: function(ctx){
-		// Currently do not need ctx.save() and restore() as we do not modify ctx
+		ctx.save();
 		ctx.fillRect(this._posx - INTX_SIZE/2, this._posy - INTX_SIZE/2, INTX_SIZE, INTX_SIZE);
 		// Draw roads
 		this._roads.forEach(function(road){
@@ -72,6 +76,23 @@ Intersection.prototype = {
 			ctx.lineTo(intersections[road]._posx, intersections[road]._posy);
 			ctx.stroke();
 		}, this);
+		ctx.restore();
+	},
+	
+	// Draw a highlight around the intersection
+	drawHighlight: function(ctx){
+		ctx.save();
+		ctx.beginPath();
+		ctx.strokeStyle = "#fff800";
+		ctx.lineWidth = 4;
+		ctx.rect(this._posx - INTX_SIZE/2, this._posy - INTX_SIZE/2, INTX_SIZE, INTX_SIZE);
+		ctx.stroke();
+		ctx.restore();
+	},
+	
+	// Return true if there is a road connection to id
+	hasRoadTo: function(id){
+		return this._roads.has(Number(id));
 	}
 }
 
@@ -131,7 +152,7 @@ Car.prototype = {
 }
 
 // Game states
-var RUN = 0, ADD_INTERSECTION = 1;
+var RUN = 0, ADD_INTERSECTION = 1, ADD_CAR = 2;
 var mode;
 
 // Game entry point
@@ -147,16 +168,33 @@ function init(){
 	canvas.height = HEIGHT;
 	ctx = canvas.getContext("2d");
 	document.getElementById("display").appendChild(canvas);
-	
+	document.addEventListener("keyup", keyUp);
+
 	canvas.addEventListener("mousedown", click);
 	
 	mode = RUN;
 	
 	// Add button listeners
-	document.getElementById("bAddIntersection").onclick = function(){mode = ADD_INTERSECTION;}
+	document.getElementById("bAddIntersection").onclick = function(){changeMode(ADD_INTERSECTION);}
+	document.getElementById("bAddCar").onclick = function(){changeMode(ADD_CAR);}
 }
 
+function changeMode(newMode){
+	mode = newMode;
+}
+
+function keyUp(evt){
+	if(evt.keyCode == 73){
+		changeMode(ADD_INTERSECTION);
+	}else if(evt.keyCode == 67){
+		changeMode(ADD_CAR);
+	}
+}
+
+// Intersection object used when adding a new intersection
 var newIntersection = null;
+// Start and end IDs used when adding a new car
+var newCarStart = -1, newCarEnd = -1;
 function click(evt){
 	var mousex = evt.offsetX;
 	var mousey = evt.offsetY;
@@ -183,6 +221,44 @@ function click(evt){
 				newIntersection = null;
 				mode = RUN;
 				window.requestAnimationFrame(step);
+			}
+		}
+	}
+	
+	else if(mode == ADD_CAR){
+		var clicked = -1;
+		for(var i in intersections){
+			var intx = intersections[i];
+			if(Math.hypot(intx._posx - mousex, intx._posy - mousey) < INTX_SIZE){
+				clicked = i;
+			}
+		}
+		
+		if(clicked == -1){
+			// Reset variables and exit add car mode, nothing clicked
+			newCarStart = -1;
+			newCarEnd = -1;
+			mode = RUN;
+			window.requestAnimationFrame(step);
+		}else{
+			if(newCarStart == -1){
+				newCarStart = clicked;
+				
+				// Highlight the new car start intersection
+				intersections[newCarStart].drawHighlight(ctx);
+			}else if(newCarEnd == -1){
+				newCarEnd = clicked;
+				
+				if(intersections[newCarStart].hasRoadTo(newCarEnd)){
+					// Add the new car and reset variables and exit add car mode
+					new Car(newCarId(), newCarStart, newCarEnd);
+				}
+				newCarStart = -1;
+				newCarEnd = -1;
+				mode = RUN;
+				window.requestAnimationFrame(step);
+			}else{
+				console.log("[WARNING] Logical error in add car mode click handler");
 			}
 		}
 	}
