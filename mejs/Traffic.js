@@ -7,6 +7,7 @@
 var WIDTH = 800, HEIGHT = 600;
 var DEF_CAR_SPEED = 0.01;
 var INTX_SIZE = 20;
+var CAR_SIZE = 5;
 
 // Game elements
 var canvas, ctx, keystate;
@@ -55,6 +56,22 @@ Intersection.prototype = {
 		}
 	},
 	
+	// disconnect this intersection from another intersection
+	disconnect: function(id, bidirectional = true){
+		// Sometimes disconnect receives an instance of an intersection
+		if(id instanceof Intersection){
+			id = id._id;
+		}
+		
+		// Sometimes a string gets passed
+		id = Number(id);
+		
+		this._roads.delete(id);
+		if(bidirectional){
+			intersections[id].disconnect(this._id, false);
+		}
+	},
+	
 	// getRandomConnection returns a random one of this intersection's connections,
 	// for a car to go to.
 	// Perhaps add a parameter for the intersection that the car just came from
@@ -93,7 +110,25 @@ Intersection.prototype = {
 	// Return true if there is a road connection to id
 	hasRoadTo: function(id){
 		return this._roads.has(Number(id));
-	}
+	},
+	
+	// remove this intersection
+	remove: function(){
+		// Remove all connections
+		this._roads.forEach(function(road){
+			this.disconnect(road);
+		}, this);
+		
+		// Remove from master set
+		delete intersections[this._id];
+		
+		// Remove cars that were on connected roads
+		for(var car in cars){
+			if(cars[car]._start == this._id || cars[car]._dest == this._id){
+				cars[car].remove();
+			}
+		}
+	},
 }
 
 // Helper functions to get the next available intersection or car id
@@ -118,6 +153,12 @@ function Car(id, start, dest){
 	this._start = start;
 	this._dest = dest;
 	this._progress = 0.0;
+	
+	// Position variables
+	// These are not updated to move a car (cars are just drawn based on their progress to a destination),
+	// but these are saved each time they are calculated for drawing, so that they can be used for detection.
+	this._posx = 0;
+	this._posy = 0;
 }
 Car.prototype = {
 	constructor: Car,
@@ -140,19 +181,26 @@ Car.prototype = {
 				 + intersections[this._start]._posx * (1-this._progress);
 		var posy = intersections[this._dest]._posy * this._progress
 				 + intersections[this._start]._posy * (1-this._progress);
+		this._posx = posx;
+		this._posy = posy;
 		
 		ctx.save();
 		ctx.beginPath();
-		ctx.arc(posx, posy, 5, 0, 2*Math.PI);
+		ctx.arc(posx, posy, CAR_SIZE, 0, 2*Math.PI);
 		ctx.fillStyle = "#cc0000"
 		ctx.fill();
 		ctx.stroke();
 		ctx.restore();
-	}
+	},
+	
+	// remove this car
+	remove: function(){
+		delete cars[this._id];
+	},
 }
 
 // Game states
-var RUN = 0, ADD_INTERSECTION = 1, ADD_CAR = 2;
+var RUN = 0, ADD_INTERSECTION = 1, REM_INTERSECTION = 2, ADD_CAR = 3, REM_CAR = 4;
 var mode;
 
 // Game entry point
@@ -176,18 +224,37 @@ function init(){
 	
 	// Add button listeners
 	document.getElementById("bAddIntersection").onclick = function(){changeMode(ADD_INTERSECTION);}
+	document.getElementById("bRemIntersection").onclick = function(){changeMode(REM_INTERSECTION);}
 	document.getElementById("bAddCar").onclick = function(){changeMode(ADD_CAR);}
+	document.getElementById("bRemCar").onclick = function(){changeMode(REM_CAR);}
 }
 
 function changeMode(newMode){
 	mode = newMode;
+	
+	// Initialize mode variables
+	if(mode == RUN){
+		console.log("[DEBUG] Entering RUN mode");
+		console.log(intersections);
+		console.log(cars);
+		window.requestAnimationFrame(step);
+	}else if(mode == ADD_INTERSECTION){
+		newIntersection = null;
+	}else if(mode == ADD_CAR){
+		newCarStart = -1;
+		newCarEnd = -1;
+	}
 }
 
 function keyUp(evt){
-	if(evt.keyCode == 73){
+	if(evt.keyCode == 73){ // i
 		changeMode(ADD_INTERSECTION);
-	}else if(evt.keyCode == 67){
+	}else if(evt.keyCode == 67){ // c
 		changeMode(ADD_CAR);
+	}else if(evt.keyCode == 79){ // o
+		changeMode(REM_INTERSECTION);
+	}else if(evt.keyCode == 86){ // v
+		changeMode(REM_CAR);
 	}
 }
 
@@ -219,10 +286,20 @@ function click(evt){
 			// Did not click on another intersection
 			if(!found){
 				newIntersection = null;
-				mode = RUN;
-				window.requestAnimationFrame(step);
+				changeMode(RUN);
 			}
 		}
+	}
+	
+	else if(mode == REM_INTERSECTION){
+		for(var i in intersections){
+			var intx = intersections[i];
+			if(Math.hypot(intx._posx - mousex, intx._posy - mousey) < INTX_SIZE){
+				intx.remove();
+				break;
+			}
+		}
+		changeMode(RUN);
 	}
 	
 	else if(mode == ADD_CAR){
@@ -238,8 +315,7 @@ function click(evt){
 			// Reset variables and exit add car mode, nothing clicked
 			newCarStart = -1;
 			newCarEnd = -1;
-			mode = RUN;
-			window.requestAnimationFrame(step);
+			changeMode(RUN);
 		}else{
 			if(newCarStart == -1){
 				newCarStart = clicked;
@@ -255,12 +331,22 @@ function click(evt){
 				}
 				newCarStart = -1;
 				newCarEnd = -1;
-				mode = RUN;
-				window.requestAnimationFrame(step);
+				changeMode(RUN);
 			}else{
 				console.log("[WARNING] Logical error in add car mode click handler");
 			}
 		}
+	}
+	
+	else if(mode == REM_CAR){
+		for(var c in cars){
+			var car = cars[c];
+			if(Math.hypot(car._posx - mousex, car._posy - mousey) < CAR_SIZE){
+				car.remove();
+				break;
+			}
+		}
+		changeMode(RUN);
 	}
 }
 
