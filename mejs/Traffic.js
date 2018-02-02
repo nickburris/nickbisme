@@ -10,12 +10,17 @@ var INTX_SIZE = 20;
 var CAR_SIZE = 5;
 
 // Game elements
-var canvas, ctx, keystate;
+var canvas, ctx, keystate, modeButtons;
 
 // Set of all intersections
 var intersections = {};
 // Set of all cars
 var cars = {};
+
+// Square distance function
+function sqdist(x1, y1, x2, y2){
+	return Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2);
+}
 
 // Intersection object
 function Intersection(id, posx, posy){
@@ -65,10 +70,25 @@ Intersection.prototype = {
 		
 		// Sometimes a string gets passed
 		id = Number(id);
+
+		// Remove cars on this connection
+		for(var car in cars){
+			if(cars[car]._start == this._id && cars[car]._dest == id){
+				cars[car].remove();
+			}
+		}
 		
 		this._roads.delete(id);
 		if(bidirectional){
 			intersections[id].disconnect(this._id, false);
+		}
+	},
+	
+	toggleRoad: function(id){
+		if(this.hasRoadTo(id)){
+			this.disconnect(id);
+		}else{
+			this.connect(id);
 		}
 	},
 	
@@ -121,13 +141,6 @@ Intersection.prototype = {
 		
 		// Remove from master set
 		delete intersections[this._id];
-		
-		// Remove cars that were on connected roads
-		for(var car in cars){
-			if(cars[car]._start == this._id || cars[car]._dest == this._id){
-				cars[car].remove();
-			}
-		}
 	},
 }
 
@@ -200,8 +213,17 @@ Car.prototype = {
 }
 
 // Game states
-var RUN = 0, ADD_INTERSECTION = 1, REM_INTERSECTION = 2, ADD_CAR = 3, REM_CAR = 4;
+var RUN = 0, ADD_INTERSECTION = 1, REM_INTERSECTION = 2, ADD_CAR = 3, REM_CAR = 4, TOGGLE_ROAD = 5;
 var mode;
+
+// Button ID to mode ID mapping
+var buttonIdToMode = {
+	"bAddIntersection" : ADD_INTERSECTION,
+	"bRemIntersection" : REM_INTERSECTION,
+	"bAddCar" : ADD_CAR,
+	"bRemCar" : REM_CAR,
+	"bToggleRoad" : TOGGLE_ROAD
+}
 
 // Game entry point
 function main(){
@@ -223,10 +245,28 @@ function init(){
 	mode = RUN;
 	
 	// Add button listeners
-	document.getElementById("bAddIntersection").onclick = function(){changeMode(ADD_INTERSECTION);}
-	document.getElementById("bRemIntersection").onclick = function(){changeMode(REM_INTERSECTION);}
-	document.getElementById("bAddCar").onclick = function(){changeMode(ADD_CAR);}
-	document.getElementById("bRemCar").onclick = function(){changeMode(REM_CAR);}
+	modeButtons = document.querySelectorAll(".bmode");
+	modeButtons.forEach(function(b){
+		b.onclick = function(){
+			toggleMode(buttonIdToMode[b.id])
+		}
+	});
+}
+
+// A toggle mode function to enable/disable buttons and enter/leave RUN mode
+function toggleMode(m){
+	if(mode == m){
+		// Return to RUN mode (changeMode function enables all buttons)
+		changeMode(RUN);
+	}else{
+		// Disable all buttons except this new mode's button
+		modeButtons.forEach(function(b){
+			if(buttonIdToMode[b.id] != m){
+				b.disabled = true;
+			}
+		});
+		changeMode(m);
+	}
 }
 
 function changeMode(newMode){
@@ -234,27 +274,34 @@ function changeMode(newMode){
 	
 	// Initialize mode variables
 	if(mode == RUN){
-		console.log("[DEBUG] Entering RUN mode");
+		console.log("[DEBUG] Entering RUN mode with intersections and cars:");
 		console.log(intersections);
 		console.log(cars);
+		modeButtons.forEach(function(b){
+			b.disabled = false;
+		});
 		window.requestAnimationFrame(step);
 	}else if(mode == ADD_INTERSECTION){
 		newIntersection = null;
 	}else if(mode == ADD_CAR){
 		newCarStart = -1;
 		newCarEnd = -1;
+	}else if(mode == TOGGLE_ROAD){
+		roadFromIntersection = -1;
 	}
 }
 
 function keyUp(evt){
 	if(evt.keyCode == 73){ // i
-		changeMode(ADD_INTERSECTION);
+		toggleMode(ADD_INTERSECTION);
 	}else if(evt.keyCode == 67){ // c
-		changeMode(ADD_CAR);
+		toggleMode(ADD_CAR);
 	}else if(evt.keyCode == 79){ // o
-		changeMode(REM_INTERSECTION);
+		toggleMode(REM_INTERSECTION);
 	}else if(evt.keyCode == 86){ // v
-		changeMode(REM_CAR);
+		toggleMode(REM_CAR);
+	}else if(evt.keyCode == 82){ // r
+		toggleMode(TOGGLE_ROAD);
 	}
 }
 
@@ -262,6 +309,8 @@ function keyUp(evt){
 var newIntersection = null;
 // Start and end IDs used when adding a new car
 var newCarStart = -1, newCarEnd = -1;
+// Intersection ID used when toggling a road
+var roadFromIntersection = -1;
 function click(evt){
 	var mousex = evt.offsetX;
 	var mousey = evt.offsetY;
@@ -276,7 +325,7 @@ function click(evt){
 			for(var i in intersections){
 				if(i != newIntersection._id){
 					var intx = intersections[i];
-					if(Math.hypot(intx._posx - mousex, intx._posy - mousey) < INTX_SIZE){
+					if(sqdist(intx._posx, intx._posy, mousex, mousey) < INTX_SIZE*INTX_SIZE){
 						newIntersection.connect(i);
 						newIntersection.draw(ctx);
 						found = true;
@@ -294,7 +343,7 @@ function click(evt){
 	else if(mode == REM_INTERSECTION){
 		for(var i in intersections){
 			var intx = intersections[i];
-			if(Math.hypot(intx._posx - mousex, intx._posy - mousey) < INTX_SIZE){
+			if(sqdist(intx._posx, intx._posy, mousex, mousey) < INTX_SIZE*INTX_SIZE){
 				intx.remove();
 				break;
 			}
@@ -306,7 +355,7 @@ function click(evt){
 		var clicked = -1;
 		for(var i in intersections){
 			var intx = intersections[i];
-			if(Math.hypot(intx._posx - mousex, intx._posy - mousey) < INTX_SIZE){
+			if(sqdist(intx._posx, intx._posy, mousex, mousey) < INTX_SIZE*INTX_SIZE){
 				clicked = i;
 			}
 		}
@@ -341,12 +390,39 @@ function click(evt){
 	else if(mode == REM_CAR){
 		for(var c in cars){
 			var car = cars[c];
-			if(Math.hypot(car._posx - mousex, car._posy - mousey) < CAR_SIZE){
+			if(sqdist(car._posx, car._posy, mousex, mousey) < CAR_SIZE*CAR_SIZE){
 				car.remove();
 				break;
 			}
 		}
 		changeMode(RUN);
+	}
+	
+	else if(mode == TOGGLE_ROAD){
+		var foundClicked = -1;
+		for(var i in intersections){
+			var intx = intersections[i];
+			if(sqdist(intx._posx, intx._posy, mousex, mousey) < INTX_SIZE*INTX_SIZE){
+				foundClicked = i;
+			}
+		}
+		
+		if(foundClicked == -1){
+			// Clicked nothing, leave mode
+			changeMode(RUN);
+		}else{
+			if(roadFromIntersection == -1){
+				// First click is on foundClicked
+				roadFromIntersection = foundClicked;
+				
+				// Highlight the start intersection
+				intersections[roadFromIntersection].drawHighlight(ctx);
+			}else{
+				// Toggle road between roadFromIntersection and foundClicked
+				intersections[roadFromIntersection].toggleRoad(foundClicked);
+				changeMode(RUN);
+			}
+		}
 	}
 }
 
