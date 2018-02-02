@@ -240,7 +240,7 @@ function init(){
 	document.getElementById("display").appendChild(canvas);
 	document.addEventListener("keyup", keyUp);
 
-	canvas.addEventListener("mousedown", click);
+	canvas.addEventListener("click", click);
 	
 	mode = RUN;
 	
@@ -377,6 +377,9 @@ function click(evt){
 				if(intersections[newCarStart].hasRoadTo(newCarEnd)){
 					// Add the new car and reset variables and exit add car mode
 					new Car(newCarId(), newCarStart, newCarEnd);
+				}else if(newCarStart == newCarEnd){
+					// Clicked the same intersection, go to random destination
+					new Car(newCarId(), newCarStart, intersections[newCarStart].getRandomConnection());
 				}
 				newCarStart = -1;
 				newCarEnd = -1;
