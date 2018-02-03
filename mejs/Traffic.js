@@ -4,8 +4,8 @@
  */
 
 // Constants
-var WIDTH = 800, HEIGHT = 600;
-var DEF_CAR_SPEED = 0.01;
+var WIDTH = window.innerWidth, HEIGHT = window.innerHeight;
+var DEF_CAR_SPEED = 2.0;
 var INTX_SIZE = 20;
 var CAR_SIZE = 5;
 
@@ -85,6 +85,11 @@ Intersection.prototype = {
 	},
 	
 	distTo: function(id){
+		// Return precomputed value
+		if(this.hasRoadTo(id)){
+			return this._roads[id];
+		}
+		console.log("no precomp distance");
 		return Math.hypot(this._posx - intersections[id]._posx, this._posy - intersections[id]._posy);
 	},
 	
@@ -181,7 +186,7 @@ Car.prototype = {
 	// Update function updates the state of the car.
 	// In the future this could accept a delta time variable to move normally
 	update: function(){
-		this._progress += this._speed;
+		this._progress += this._speed/(intersections[this._start].distTo(this._dest));
 		
 		if(this._progress >= 1){
 			this._start = this._dest;
@@ -478,6 +483,7 @@ d.connect(b._id);
 e.connect(d._id);
 console.log(intersections);
 
-new Car(newCarId(), a._id, b._id);
-new Car(newCarId(), c._id, d._id);
-new Car(newCarId(), e._id, d._id);
+for(var i = 0; i < 10; i++){
+	new Car(newCarId(), b._id, b.getRandomConnection());
+}
+console.log(cars);
