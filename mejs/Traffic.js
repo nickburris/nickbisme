@@ -33,7 +33,7 @@ function Intersection(id, posx, posy){
 	this._posy = posy;
 	
 	// Set of IDs of connected intersections
-	this._roads = new Set();
+	this._roads = {};
 }
 Intersection.prototype = {
 	constructor: Intersection,
@@ -54,8 +54,8 @@ Intersection.prototype = {
 		if(this._id == id){
 			console.log("[WARNING] Connecting intersection ", id, " to self.");
 		}
-		// Add id to this connection set
-		this._roads.add(id);
+		// Add new road id with distance
+		this._roads[id] = this.distTo(id);
 		if(bidirectional){
 			intersections[id].connect(this._id, false);
 		}
@@ -78,10 +78,14 @@ Intersection.prototype = {
 			}
 		}
 		
-		this._roads.delete(id);
+		delete this._roads[id];
 		if(bidirectional){
 			intersections[id].disconnect(this._id, false);
 		}
+	},
+	
+	distTo: function(id){
+		return Math.hypot(this._posx - intersections[id]._posx, this._posy - intersections[id]._posy);
 	},
 	
 	toggleRoad: function(id){
@@ -96,10 +100,8 @@ Intersection.prototype = {
 	// for a car to go to.
 	// Perhaps add a parameter for the intersection that the car just came from
 	getRandomConnection: function(){
-		// TODO Sets are not good for picking a random item from
-		// We can only either iterate the set or convert to an array on the spot.
-		roadArr = Array.from(this._roads);
-		return roadArr[Math.floor(Math.random()*roadArr.length)];
+		ids = Object.keys(this._roads);
+		return ids[Math.floor(Math.random()*ids.length)];
 	},
 	
 	// draw this intersection
@@ -107,12 +109,12 @@ Intersection.prototype = {
 		ctx.save();
 		ctx.fillRect(this._posx - INTX_SIZE/2, this._posy - INTX_SIZE/2, INTX_SIZE, INTX_SIZE);
 		// Draw roads
-		this._roads.forEach(function(road){
+		for(var road in this._roads){
 			ctx.beginPath();
 			ctx.moveTo(this._posx, this._posy);
 			ctx.lineTo(intersections[road]._posx, intersections[road]._posy);
 			ctx.stroke();
-		}, this);
+		}
 		ctx.restore();
 	},
 	
@@ -129,15 +131,15 @@ Intersection.prototype = {
 	
 	// Return true if there is a road connection to id
 	hasRoadTo: function(id){
-		return this._roads.has(Number(id));
+		return this._roads.hasOwnProperty(Number(id));
 	},
 	
 	// remove this intersection
 	remove: function(){
 		// Remove all connections
-		this._roads.forEach(function(road){
+		for(var road in this._roads){
 			this.disconnect(road);
-		}, this);
+		}
 		
 		// Remove from master set
 		delete intersections[this._id];
