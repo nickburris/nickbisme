@@ -17,6 +17,16 @@ var canvas, ctx, keystate, modeButtons;
 var intersections = {};
 // Set of all cars
 var cars = {};
+// Set of speed limits
+var speedLimits = {};
+
+function setSpeedLimit(start, end, speed){
+	speedLimits[start + " " + end] = speed;
+}
+
+function getSpeedLimit(start, end){
+	return speedLimits[start + " " + end];
+}
 
 // Square distance function
 function sqdist(x1, y1, x2, y2){
@@ -55,8 +65,13 @@ Intersection.prototype = {
 		if(this._id == id){
 			console.log("[WARNING] Connecting intersection ", id, " to self.");
 		}
+		
 		// Add new road id with distance
 		this._roads[id] = this.distTo(id);
+		
+		// Set speed limit to default for now, can take parameter in the future
+		setSpeedLimit(this._id, id, DEF_CAR_MAX_SPEED);
+		
 		if(bidirectional){
 			intersections[id].connect(this._id, false);
 		}
@@ -169,7 +184,7 @@ function Car(id, start, dest){
 	this._id = id;
 	
 	this._speed = 0;
-	this._maxSpeed = DEF_CAR_MAX_SPEED;
+	this._maxSpeed = getSpeedLimit(start, dest);
 	this._accel = DEF_CAR_ACCEL;
 	
 	//IDs of start and destination intersections
@@ -204,6 +219,8 @@ Car.prototype = {
 			this._start = this._dest;
 			this._dest = intersections[this._dest].getRandomConnection();
 			this._progress = 0;
+			
+			this._maxSpeed = getSpeedLimit(this._start, this._dest);
 			
 			// for now, going through an intersection halves speed.
 			this._speed /= 2;
