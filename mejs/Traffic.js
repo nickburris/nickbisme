@@ -5,7 +5,8 @@
 
 // Constants
 var WIDTH = window.innerWidth, HEIGHT = window.innerHeight;
-var DEF_CAR_SPEED = 2.0;
+var DEF_CAR_MAX_SPEED = 3.0;
+var DEF_CAR_ACCEL = 0.01;
 var INTX_SIZE = 20;
 var CAR_SIZE = 5;
 
@@ -167,7 +168,9 @@ function Car(id, start, dest){
 	cars[id] = this;
 	this._id = id;
 	
-	this._speed = DEF_CAR_SPEED;
+	this._speed = 0;
+	this._maxSpeed = DEF_CAR_MAX_SPEED;
+	this._accel = DEF_CAR_ACCEL;
 	
 	//IDs of start and destination intersections
 	this._start = start;
@@ -186,12 +189,24 @@ Car.prototype = {
 	// Update function updates the state of the car.
 	// In the future this could accept a delta time variable to move normally
 	update: function(){
+		// Accelerate
+		if(this._speed < this._maxSpeed){
+			this._speed += this._accel;
+		}
+		
+		// Cap speed
+		this._speed = Math.min(this._speed, this._maxSpeed);
+		
+		// Move
 		this._progress += this._speed/(intersections[this._start].distTo(this._dest));
 		
 		if(this._progress >= 1){
 			this._start = this._dest;
 			this._dest = intersections[this._dest].getRandomConnection();
 			this._progress = 0;
+			
+			// for now, going through an intersection halves speed.
+			this._speed /= 2;
 		}
 	},
 	
@@ -474,13 +489,16 @@ var b = new Intersection(newIntersectionId(), 200, 200);
 var c = new Intersection(newIntersectionId(), 300, 100);
 var d = new Intersection(newIntersectionId(), 275, 225);
 var e = new Intersection(newIntersectionId(), 150, 300);
-a.connect(e._id);
-b.connect(a._id);
-c.connect(a._id);
-c.connect(d._id);
-c.connect(b._id);
-d.connect(b._id);
-e.connect(d._id);
+var f = new Intersection(newIntersectionId(), 1000, 200);
+a.connect(e);
+b.connect(a);
+c.connect(a);
+c.connect(d);
+c.connect(b);
+d.connect(b);
+e.connect(d);
+f.connect(c);
+f.connect(d);
 console.log(intersections);
 
 for(var i = 0; i < 10; i++){
