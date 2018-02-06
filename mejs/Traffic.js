@@ -9,6 +9,7 @@ var DEF_CAR_MAX_SPEED = 3.0;
 var DEF_CAR_ACCEL = 0.01;
 var INTX_SIZE = 20;
 var CAR_SIZE = 5;
+var CAR_PASS_TIME = 500; // milliseconds
 
 // Game elements
 var canvas, ctx, keystate, modeButtons;
@@ -33,6 +34,10 @@ function sqdist(x1, y1, x2, y2){
 	return Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2);
 }
 
+function getTime(){
+	return new Date().getTime();
+}
+
 // Intersection object
 function Intersection(id, posx, posy){
 	// Add this intersection to the master set
@@ -45,6 +50,9 @@ function Intersection(id, posx, posy){
 	
 	// Set of IDs of connected intersections
 	this._roads = {};
+	
+	this._queue = new DoublyLinkedList();
+	this._lastCarTime = 0;
 }
 Intersection.prototype = {
 	constructor: Intersection,
@@ -165,6 +173,28 @@ Intersection.prototype = {
 		// Remove from master set
 		delete intersections[this._id];
 	},
+	
+	// enqueue a car at this intersection
+	enqueue: function(carid){
+		this._queue.add(carid);
+		if(this._queue.size() == 1){
+			this._lastCarTime = getTime();
+		}
+	},
+	
+	// Let a car through if the time has passed
+	request: function(carid){
+		carid = Number(carid);
+		this._queue.getFrontNode().data = Number(this._queue.getFrontNode().data);
+		if(this._queue.getFrontNode().data == carid){
+			if(getTime() - this._lastCarTime > CAR_PASS_TIME){
+				this._lastCarTime = getTime();
+				this._queue.remove(0);
+				return true;
+			}
+		}
+		return false;
+	}
 }
 
 // Helper functions to get the next available intersection or car id
@@ -197,6 +227,8 @@ function Car(id, start, dest){
 	// but these are saved each time they are calculated for drawing, so that they can be used for detection.
 	this._posx = 0;
 	this._posy = 0;
+	
+	this._stoppedAt = null;
 }
 Car.prototype = {
 	constructor: Car,
@@ -204,26 +236,38 @@ Car.prototype = {
 	// Update function updates the state of the car.
 	// In the future this could accept a delta time variable to move normally
 	update: function(){
-		// Accelerate
-		if(this._speed < this._maxSpeed){
-			this._speed += this._accel;
-		}
-		
-		// Cap speed
-		this._speed = Math.min(this._speed, this._maxSpeed);
-		
-		// Move
-		this._progress += this._speed/(intersections[this._start].distTo(this._dest));
-		
-		if(this._progress >= 1){
-			this._start = this._dest;
-			this._dest = intersections[this._dest].getRandomConnection();
-			this._progress = 0;
+		if(this._stoppedAt == null){
+			// Accelerate
+			if(this._speed < this._maxSpeed){
+				this._speed += this._accel;
+			}
 			
-			this._maxSpeed = getSpeedLimit(this._start, this._dest);
+			// Cap speed
+			this._speed = Math.min(this._speed, this._maxSpeed);
 			
-			// for now, going through an intersection halves speed.
-			this._speed /= 2;
+			// Move
+			this._progress += this._speed/(intersections[this._start].distTo(this._dest));
+			
+			if(this._progress >= 1){
+				this._start = this._dest;
+				this._dest = intersections[this._dest].getRandomConnection();
+				this._progress = 0;
+				
+				this._maxSpeed = getSpeedLimit(this._start, this._dest);
+				
+				// for now, going through an intersection halves speed.
+				this._speed /= 2;
+				this._stoppedAt = this._start;
+				intersections[this._stoppedAt].enqueue(this._id);
+				if(!intersections[this._stoppedAt].request(this._id)){
+					this._speed = 0;
+				}
+			}
+		}else{
+			// Stopped at an intersection
+			if(intersections[this._stoppedAt].request(this._id)){
+				this._stoppedAt = null;
+			}
 		}
 	},
 	
@@ -501,12 +545,23 @@ function draw(){
 }
 
 // Create a couple of intersections and cars for demo
+// TODO This is a mess, clean it up and make a good demo map.
+//  Some kind of JSON import/export system?
 var a = new Intersection(newIntersectionId(), 100, 100);
 var b = new Intersection(newIntersectionId(), 200, 200);
 var c = new Intersection(newIntersectionId(), 300, 100);
 var d = new Intersection(newIntersectionId(), 275, 225);
 var e = new Intersection(newIntersectionId(), 150, 300);
 var f = new Intersection(newIntersectionId(), 1000, 200);
+var t1 = new Intersection(newIntersectionId(), 400, 400);
+var t2 = new Intersection(newIntersectionId(), 400, 430);
+var t3 = new Intersection(newIntersectionId(), 385, 475);
+var t4 = new Intersection(newIntersectionId(), 430, 400);
+var t5 = new Intersection(newIntersectionId(), 430, 430);
+var t6 = new Intersection(newIntersectionId(), 430, 475);
+var t7 = new Intersection(newIntersectionId(), 460, 400);
+var t8 = new Intersection(newIntersectionId(), 460, 430);
+var t9 = new Intersection(newIntersectionId(), 475, 475);
 a.connect(e);
 b.connect(a);
 c.connect(a);
@@ -516,9 +571,23 @@ d.connect(b);
 e.connect(d);
 f.connect(c);
 f.connect(d);
+d.connect(t1);
+t1.connect(t2);
+t1.connect(t4);
+t2.connect(t3);
+t2.connect(t5);
+t3.connect(t6);
+t4.connect(t5);
+t4.connect(t7);
+t5.connect(t6);
+t5.connect(t8);
+t6.connect(t9);
+t7.connect(t8);
+t8.connect(t9);
 console.log(intersections);
 
 for(var i = 0; i < 10; i++){
 	new Car(newCarId(), b._id, b.getRandomConnection());
+	new Car(newCarId(), t5._id, t5.getRandomConnection());
 }
 console.log(cars);
