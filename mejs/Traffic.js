@@ -5,11 +5,13 @@
 
 // Constants
 var WIDTH = window.innerWidth, HEIGHT = window.innerHeight;
-var DEF_CAR_MAX_SPEED = 3.0;
+var DEF_CAR_MAX_SPEED = 3.0; // Default car max speed, cars can be set higher though
+var ABS_CAR_MAX_SPEED = 10.0; // The absolute maximum a car's speed can be (whatever this is set to)
 var DEF_CAR_ACCEL = 0.01;
 var INTX_SIZE = 20;
-var CAR_SIZE = 5;
-var CAR_PASS_TIME = 500; // milliseconds
+var CAR_SIZE = 10;
+var CAR_DIST = 15;
+var CAR_INTX_WAIT_TIME = 2000; // milliseconds
 
 // Game elements
 var canvas, ctx, keystate, modeButtons;
@@ -32,6 +34,14 @@ function getSpeedLimit(start, end){
 // Square distance function
 function sqdist(x1, y1, x2, y2){
 	return Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2);
+}
+
+// Get how far back a car should stop from the car ahead, given
+//  the road and the progress of the car in front.
+function getStopProgress(roadStart, roadEnd, frontCarProgress){
+	roadLength = intersections[roadStart].distTo(roadEnd);
+	progress = frontCarProgress - (CAR_DIST/roadLength);
+	return progress >= 0 ? progress : progress+1;
 }
 
 function getTime(){
@@ -187,7 +197,7 @@ Intersection.prototype = {
 		carid = Number(carid);
 		this._queue.getFrontNode().data = Number(this._queue.getFrontNode().data);
 		if(this._queue.getFrontNode().data == carid){
-			if(getTime() - this._lastCarTime > CAR_PASS_TIME){
+			if(getTime() - this._lastCarTime > CAR_INTX_WAIT_TIME){
 				this._lastCarTime = getTime();
 				this._queue.remove(0);
 				return true;
@@ -242,8 +252,8 @@ Car.prototype = {
 				this._speed += this._accel;
 			}
 			
-			// Cap speed
-			this._speed = Math.min(this._speed, this._maxSpeed);
+			// Cap speed between current speed (default), the maximum speed, and the car in front's speed.
+			this._speed = Math.min(this._speed, this._maxSpeed, this.colliding());
 			
 			// Move
 			this._progress += this._speed/(intersections[this._start].distTo(this._dest));
@@ -271,6 +281,37 @@ Car.prototype = {
 		}
 	},
 	
+	// Returns the speed of the car in front, if this car is colliding with it.
+	colliding: function(){
+		// TODO this could probably be made more efficient by keeping a map of 
+		// roads to the cars that are on it.
+		for(var car in cars){
+			car = cars[car];
+			if(car._id != this._id){
+				// Check they're on the same road
+				if(car._start == this._start && car._dest == this._dest){
+					// Only collide with a car ahead
+					if(car._progress > this._progress){
+						if(sqdist(this._posx, this._posy, car._posx, car._posy) < CAR_DIST*CAR_DIST){
+							this._progress = getStopProgress(this._start, this._dest, car._progress);
+							// Set this car's speed to the car in front
+							return car._speed;
+						}
+					}
+				}
+				// Or if the one in front is at an intersection
+				else if(car._stoppedAt == this._dest){
+					if(sqdist(this._posx, this._posy, car._posx, car._posy) <= CAR_DIST*CAR_DIST){
+						this._progress = getStopProgress(this._start, this._dest, car._progress);
+						// Car in front is stopped, so set speed to 0
+						return 0;
+					}
+				}
+			}
+		}
+		return ABS_CAR_MAX_SPEED;
+	},
+	
 	// draw this car
 	draw: function(ctx){
 		var posx = intersections[this._dest]._posx * this._progress
@@ -282,7 +323,7 @@ Car.prototype = {
 		
 		ctx.save();
 		ctx.beginPath();
-		ctx.arc(posx, posy, CAR_SIZE, 0, 2*Math.PI);
+		ctx.arc(posx, posy, CAR_SIZE/2, 0, 2*Math.PI);
 		ctx.fillStyle = "#cc0000"
 		ctx.fill();
 		ctx.stroke();
@@ -586,8 +627,10 @@ t7.connect(t8);
 t8.connect(t9);
 console.log(intersections);
 
-for(var i = 0; i < 10; i++){
-	new Car(newCarId(), b._id, b.getRandomConnection());
-	new Car(newCarId(), t5._id, t5.getRandomConnection());
+// Start a new car at each intersection
+for(var i in intersections){
+	intx = intersections[i];
+	new Car(newCarId(), intx._id, intx.getRandomConnection());
 }
+
 console.log(cars);
