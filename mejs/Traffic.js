@@ -11,7 +11,7 @@ var DEF_CAR_ACCEL = 0.01;
 var INTX_SIZE = 20;
 var CAR_SIZE = 10;
 var CAR_DIST = 15;
-var CAR_INTX_WAIT_TIME = 2000; // milliseconds
+var CAR_INTX_WAIT_TIME = 1000; // milliseconds
 
 // Game elements
 var canvas, ctx, keystate, modeButtons;
@@ -63,6 +63,8 @@ function Intersection(id, posx, posy){
 	
 	this._queue = new DoublyLinkedList();
 	this._lastCarTime = 0;
+	
+	this._delayTime = CAR_INTX_WAIT_TIME;
 }
 Intersection.prototype = {
 	constructor: Intersection,
@@ -184,6 +186,10 @@ Intersection.prototype = {
 		delete intersections[this._id];
 	},
 	
+	setDelay: function(delay){
+		this._delayTime = delay;
+	},
+	
 	// enqueue a car at this intersection
 	enqueue: function(carid){
 		this._queue.add(carid);
@@ -197,7 +203,7 @@ Intersection.prototype = {
 		carid = Number(carid);
 		this._queue.getFrontNode().data = Number(this._queue.getFrontNode().data);
 		if(this._queue.getFrontNode().data == carid){
-			if(getTime() - this._lastCarTime > CAR_INTX_WAIT_TIME){
+			if(getTime() - this._lastCarTime > this._delayTime){
 				this._lastCarTime = getTime();
 				this._queue.remove(0);
 				return true;
@@ -239,6 +245,7 @@ function Car(id, start, dest){
 	this._posy = 0;
 	
 	this._stoppedAt = null;
+	this._stoppedYet = false;
 }
 Car.prototype = {
 	constructor: Car,
@@ -258,6 +265,17 @@ Car.prototype = {
 			// Move
 			this._progress += this._speed/(intersections[this._start].distTo(this._dest));
 			
+			if(!this._stoppedYet && this.atIntersection()){
+				// for now, going through an intersection halves speed.
+				this._speed /= 2;
+				this._stoppedAt = this._dest;
+				this._stoppedYet = true;
+				intersections[this._stoppedAt].enqueue(this._id);
+				if(!intersections[this._stoppedAt].request(this._id)){
+					this._speed = 0;
+				}
+			}
+			
 			if(this._progress >= 1){
 				this._start = this._dest;
 				this._dest = intersections[this._dest].getRandomConnection();
@@ -265,13 +283,7 @@ Car.prototype = {
 				
 				this._maxSpeed = getSpeedLimit(this._start, this._dest);
 				
-				// for now, going through an intersection halves speed.
-				this._speed /= 2;
-				this._stoppedAt = this._start;
-				intersections[this._stoppedAt].enqueue(this._id);
-				if(!intersections[this._stoppedAt].request(this._id)){
-					this._speed = 0;
-				}
+				this._stoppedYet = false;
 			}
 		}else{
 			// Stopped at an intersection
@@ -310,6 +322,11 @@ Car.prototype = {
 			}
 		}
 		return ABS_CAR_MAX_SPEED;
+	},
+	
+	atIntersection: function(){
+		roadLength = intersections[this._start].distTo(this._dest);
+		return this._progress*roadLength + CAR_SIZE + INTX_SIZE >= roadLength;
 	},
 	
 	// draw this car
@@ -625,6 +642,9 @@ t5.connect(t8);
 t6.connect(t9);
 t7.connect(t8);
 t8.connect(t9);
+
+d.setDelay(5000); // try and build congestion at d
+
 console.log(intersections);
 
 // Start a new car at each intersection
