@@ -3,7 +3,6 @@
  *
  */
 
-//var WIDTH = document.body.clientWidth, HEIGHT = document.body.clientHeight;
 var WIDTH = window.innerWidth, HEIGHT = window.innerHeight;
 
 // Canvas variables
@@ -19,7 +18,7 @@ var mouseX, mouseY;
 var BALL_SIZE = 20;
 var DRAW_DELAY = 20;
 var lastDrawn = 0;
-var DECAY = 0.995
+var DECAY = 0.995;
 
 // The Ball object
 function Ball(posX, posY, velX, velY){
@@ -36,7 +35,7 @@ Ball.prototype = {
 	
 	// check whether this ball touches the other ball
 	touching: function(other){
-		return Math.pow((this.centerX-other.centerX),2) + Math.pow((this.centerY-other.centerY),2) < Math.pow((this.size+other.size),2);
+		return Math.pow((this.centerX-other.centerX),2) + Math.pow((this.centerY-other.centerY),2) < Math.pow((this.size/2+other.size/2),2);
 	}
 }
 
@@ -92,7 +91,7 @@ function mouseDown(evt){
 	// remove instructions on first click
 	if(instructionsElement != null){
 		console.log("Removed instructions");
-		instructionsElement.innerHTML = ""; //instructionsElement.parent.removeChild(instructionsElement);
+		instructionsElement.innerHTML = "";
 		instructionsElement = null;
 	}
 	
@@ -191,9 +190,9 @@ function update(){
 				ball.velx = newVels[0];
 				ball.vely = newVels[1];
 				
-				newVels = collide(other, ball);
-				other.velx = newVels[0];
-				other.vely = newVels[1];
+				//newVels = collide(other, ball);
+				//other.velx = newVels[0];
+				//other.vely = newVels[1];
 			}
 			otherNode = otherNode.next;
 		}
